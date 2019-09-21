@@ -10,7 +10,14 @@ export type Ident = string;
 /**
  * Value types.
  */
-export type Type = "int" | "bool";
+export type Type = "int" | "bool" | RecordType;
+
+/**
+ * Record types.
+ */
+interface RecordType {
+  [field: string]: Type;
+}
 
 /**
  * An instruction that does not produce any result.
@@ -26,7 +33,7 @@ export interface EffectOperation {
  */
 export interface ValueOperation {
   op: "add" | "mul" | "sub" | "div" |
-      "id" | "nop" |
+      "id" | "nop" | "type" |
       "eq" | "lt" | "gt" | "ge" | "le" | "not" | "and" | "or";
   args: Ident[];
   dest: Ident;
