@@ -21,6 +21,13 @@ export interface EffectOperation {
 }
 
 /**
+ * Record types.
+ */
+export interface RecordType {
+  [field:string] : Type;
+}
+
+/**
  * An operation that produces a value and places its result in the
  * destination variable.
  */
@@ -37,9 +44,9 @@ export interface ValueOperation {
  * An operation that produces a record value and places its result in the
  * destination variable.
  */
-export interface RecordValueOperation {
-  op: "record";
-  args: {[index: string]: Ident};
+export interface RecordValue {
+  op: "recordinst";
+  fields: {[index: string]: Ident};
   dest: Ident;
   type: Type;
 }
@@ -59,12 +66,11 @@ export interface Constant {
   type: Type;
 }
 
-export interface RecordType {
-  [field:string] : Type;
-}
-
+/**
+ * An instruction that instantiates a record and places it into a variable.
+ */
 export interface RecordDef {
-  op: "type";
+  op: "recorddef";
   recordname: Ident;
   fields: RecordType;
 }
@@ -72,13 +78,14 @@ export interface RecordDef {
 /**
  * Operations take arguments, which come from previously-assigned identifiers.
  */
-export type Operation = EffectOperation | ValueOperation | RecordValueOperation;
-export type ArgListOperation = EffectOperation | ValueOperation
+export type Operation = EffectOperation | ValueOperation;
+
 /**
- * Instructions can be operations (which have arguments) or constants (which
- * don't). Both produce a value in a destination variable.
+ * Instructions can be operations, record values (which have arguments), or
+ * constants, record definitions (which don't).
+ * Both produce a value in a destination variable.
  */
-export type Instruction = Operation | Constant | RecordDef;
+export type Instruction = Operation | Constant | RecordDef | RecordValue;
 
 /**
  * Both constants and value operations produce results.

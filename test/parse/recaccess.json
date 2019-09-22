@@ -33,27 +33,11 @@
         },
         {
           "args": [
-            "typeinst",
-            "ident1"
+            "typeinst.ident1"
           ],
           "dest": "c",
-          "op": "access",
+          "op": "id",
           "type": "int"
-        },
-        {
-          "args": [
-            "somewhere"
-          ],
-          "op": "jmp"
-        },
-        {
-          "label": "somewhere"
-        },
-        {
-          "args": [
-            "v"
-          ],
-          "op": "print"
         }
       ],
       "name": "main"

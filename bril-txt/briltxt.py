@@ -69,10 +69,12 @@ class JSONTransformer(lark.Transformer):
             'value': val,
         }
 
-
     def record(self, items):
         recordName = items.pop(0)
-        return {'recordname':recordName, 'fields': {k: v for i in items for k, v in i.items()}}
+        return {
+            'recordname':recordName, 
+            'op': 'recorddef',
+            'fields': {k: v for i in items for k, v in i.items()}}
 
     def recordfield(self, items):
         return {items[0]: items[1]}
@@ -91,18 +93,17 @@ class JSONTransformer(lark.Transformer):
     def recordinst(self, items):
         dest = items.pop(0)
         type = items.pop(0)
-        op = "record"
         return {
-            'op': str(op),
+            'op': 'recordinst',
             'dest': str(dest),
             'type': type,
-            'args': {k: v for i in items for k, v in i.items()},
+            'fields': {k: v for i in items for k, v in i.items()},
         }
 
     def access(self, items):
         dest = items.pop(0)
         type = items.pop(0)
-        op = "access"
+        op = 'access'
         return {
             'op': str(op),
             'dest': str(dest),

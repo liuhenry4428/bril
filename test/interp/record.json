@@ -1,0 +1,45 @@
+{
+  "functions": [
+    {
+      "instrs": [
+        {
+          "dest": "a",
+          "op": "const",
+          "type": "int",
+          "value": 21
+        },
+        {
+          "fields": {
+            "age": "int"
+          },
+          "op": "recorddef",
+          "recordname": "person"
+        },
+        {
+          "dest": "henry",
+          "fields": {
+            "age": "a"
+          },
+          "op": "recordinst",
+          "type": "person"
+        },
+        {
+          "args": [
+            "henry",
+            "age"
+          ],
+          "dest": "b",
+          "op": "access",
+          "type": "int"
+        },
+        {
+          "args": [
+            "b"
+          ],
+          "op": "print"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}

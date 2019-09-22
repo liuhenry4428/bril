@@ -1,7 +1,7 @@
 main {
-  a: int = const 4;
+  a: int = const 21;
   type person = {age : int};
   henry : person = record {age : a};
-  b : int = access henry age;
+  b : int = id henry . age;
   print b;
 }
