@@ -21,10 +21,13 @@ start: func*
 
 func: CNAME "{" instr* "}"
 
-?instr: const | vop | eop | label
+?instr: const | vop | eop | label | record | recordinst | access
 
-const.4: IDENT ":" type "=" "const" lit ";"
-vop.3: IDENT ":" type "=" CNAME IDENT* ";"
+record.6: "type" IDENT "=" "{" [recordfield (";" recordfield)*] "}" ";"
+const.5: IDENT ":" type "=" "const" lit ";"
+access.5: IDENT ":" type "=" "id" IDENT "." IDENT ";"
+vop.4: IDENT ":" type "=" CNAME IDENT* ";"
+recordinst.3: IDENT ":" type "=" "record" "{" [recordfield (";" recordfield)*] "}" ";"
 eop.2: CNAME IDENT* ";"
 label.1: IDENT ":"
 
@@ -32,6 +35,7 @@ lit: SIGNED_INT  -> int
   | BOOL     -> bool
 
 type: CNAME
+recordfield: IDENT ":" type
 BOOL: "true" | "false"
 IDENT: ("_"|"%"|LETTER) ("_"|"%"|"."|LETTER|DIGIT)*
 COMMENT: /#.*/
@@ -65,6 +69,14 @@ class JSONTransformer(lark.Transformer):
             'value': val,
         }
 
+
+    def record(self, items):
+        recordName = items.pop(0)
+        return {'recordname':recordName, 'fields': {k: v for i in items for k, v in i.items()}}
+
+    def recordfield(self, items):
+        return {items[0]: items[1]}
+
     def vop(self, items):
         dest = items.pop(0)
         type = items.pop(0)
@@ -75,6 +87,28 @@ class JSONTransformer(lark.Transformer):
             'type': type,
             'args': [str(t) for t in items],
          }
+
+    def recordinst(self, items):
+        dest = items.pop(0)
+        type = items.pop(0)
+        op = "record"
+        return {
+            'op': str(op),
+            'dest': str(dest),
+            'type': type,
+            'args': {k: v for i in items for k, v in i.items()},
+        }
+
+    def access(self, items):
+        dest = items.pop(0)
+        type = items.pop(0)
+        op = "access"
+        return {
+            'op': str(op),
+            'dest': str(dest),
+            'type': type,
+            'args': [str(t) for t in items],
+        }
 
     def eop(self, items):
         op = items.pop(0)

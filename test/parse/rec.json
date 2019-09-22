@@ -1,0 +1,61 @@
+{
+  "functions": [
+    {
+      "instrs": [
+        {
+          "fields": {
+            "ident1": "int",
+            "ident2": "int"
+          },
+          "recordname": "myType"
+        },
+        {
+          "dest": "a",
+          "op": "const",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "dest": "b",
+          "op": "const",
+          "type": "int",
+          "value": 2
+        },
+        {
+          "args": {
+            "ident1": "a",
+            "ident2": "b"
+          },
+          "dest": "typeinst",
+          "op": "record",
+          "type": "myType"
+        },
+        {
+          "args": [
+            "typeinst",
+            "ident1"
+          ],
+          "dest": "c",
+          "op": "access",
+          "type": "int"
+        },
+        {
+          "args": [
+            "somewhere"
+          ],
+          "op": "jmp"
+        },
+        {
+          "label": "somewhere"
+        },
+        {
+          "args": [
+            "v"
+          ],
+          "op": "print"
+        }
+      ],
+      "name": "main"
+    }
+  ]
+}
