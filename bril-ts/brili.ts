@@ -23,8 +23,16 @@ const argCounts: {[key in bril.OpCode]: number | null} = {
   nop: 0,
 };
 
-type Value = boolean | BigInt;
+type Value = boolean | BigInt | Record;
+
+export interface Record {
+  name: string;
+  bindings: RecordBindings;
+}
+type RecordBindings = {[index: string]: Value};
 type Env = Map<bril.Ident, Value>;
+
+type TypeEnv = Map<bril.Ident, bril.RecordType>;
 
 function get(env: Env, ident: bril.Ident) {
   let val = env.get(ident);
@@ -46,19 +54,49 @@ function checkArgs(instr: bril.Operation, count: number) {
 
 function getInt(instr: bril.Operation, env: Env, index: number) {
   let val = get(env, instr.args[index]);
+  return getIntWithVal(val, env, index, instr.op)
+}
+
+function getIntWithVal(val: Value, env: Env, index: number | string, op: string) {
   if (typeof val !== 'bigint') {
-    throw `${instr.op} argument ${index} must be a number`;
+    throw `${op} argument ${index} must be a number`;
   }
   return val;
 }
 
 function getBool(instr: bril.Operation, env: Env, index: number) {
   let val = get(env, instr.args[index]);
+  return getBoolWithVal(val, env, index, instr.op)
+}
+
+function getBoolWithVal(val: Value, env: Env, index: number | string, op: string) {
   if (typeof val !== 'boolean') {
-    throw `${instr.op} argument ${index} must be a boolean`;
+    throw `${op} argument ${index} must be a boolean`;
   }
   return val;
 }
+
+function getRecord(instr: bril.RecordValueOperation, env: Env, typeEnv: TypeEnv) : Record {
+  let record : bril.RecordType = get(typeEnv, instr.type);
+  let record_val : Record = {name: instr.type, bindings: {}};
+  for (let field in instr.args) {
+      // get declared type from typeEnv for each field
+      let declared_type : bril.Type = record[field];
+      var val;
+      if (declared_type === "boolean") {
+        val = getBoolWithVal(instr.args[field], env, field, instr.op);
+      } else if (declared_type === "bigint") {
+        val = getIntWithVal(instr.args[field], env, field, instr.op);
+      } else {
+        record = get(env, instr.args[field]);
+        if (record_val.name != declared_type){
+          throw `${instr.op} argument ${field} must be a ${declared_type}`;
+        } 
+      }
+      record_val.bindings[field] = val;
+    }
+    return record_val;
+  }
 
 /**
  * The thing to do after interpreting an instruction: either transfer
@@ -77,7 +115,7 @@ let END: Action = {"end": true};
  * otherwise, return "next" to indicate that we should proceed to the next
  * instruction or "end" to terminate the function.
  */
-function evalInstr(instr: bril.Instruction, env: Env): Action {
+function evalInstr(instr: bril.Instruction, env: Env, typeEnv: TypeEnv): Action {
   // Check that we have the right number of arguments.
   if (instr.op !== "const") {
     let count = argCounts[instr.op];
@@ -97,13 +135,30 @@ function evalInstr(instr: bril.Instruction, env: Env): Action {
     } else {
       value = instr.value;
     }
-
+   
     env.set(instr.dest, value);
     return NEXT;
+
+  case "record": {
+    let val = getRecord(instr, env, typeEnv);
+    env.set(instr.dest, val);
+  }
 
   case "id": {
     let val = get(env, instr.args[0]);
     env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "access": {
+    let record = get(env, instr.args[0]);
+    let val = record.bindings[instr.args[1]];
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "type": {
+    typeEnv.set(instr.name, instr.fields);
     return NEXT;
   }
 

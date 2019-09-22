@@ -1,0 +1,5 @@
+main {
+  x: int = const 4;
+  y: bool = const false;
+  copy1: boolean = add x y;
+}

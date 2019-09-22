@@ -10,14 +10,7 @@ export type Ident = string;
 /**
  * Value types.
  */
-export type Type = "int" | "bool" | RecordType;
-
-/**
- * Record types.
- */
-interface RecordType {
-  [field: string]: Type;
-}
+export type Type = "int" | "bool" | Ident;
 
 /**
  * An instruction that does not produce any result.
@@ -33,9 +26,20 @@ export interface EffectOperation {
  */
 export interface ValueOperation {
   op: "add" | "mul" | "sub" | "div" |
-      "id" | "nop" | "type" |
+      "id" | "nop" | "access" |
       "eq" | "lt" | "gt" | "ge" | "le" | "not" | "and" | "or";
   args: Ident[];
+  dest: Ident;
+  type: Type;
+}
+
+/**
+ * An operation that produces a record value and places its result in the
+ * destination variable.
+ */
+export interface RecordValueOperation {
+  op: "record";
+  args: {[index: string]: Ident};
   dest: Ident;
   type: Type;
 }
@@ -55,16 +59,26 @@ export interface Constant {
   type: Type;
 }
 
+export interface RecordType {
+  [field:string] : Type;
+}
+
+export interface RecordDef {
+  op: "type";
+  name: Ident;
+  fields: RecordType;
+}
+
 /**
  * Operations take arguments, which come from previously-assigned identifiers.
  */
-export type Operation = EffectOperation | ValueOperation;
+export type Operation = EffectOperation | ValueOperation | RecordValueOperation;
 
 /**
  * Instructions can be operations (which have arguments) or constants (which
  * don't). Both produce a value in a destination variable.
  */
-export type Instruction = Operation | Constant;
+export type Instruction = Operation | Constant | RecordDef;
 
 /**
  * Both constants and value operations produce results.
