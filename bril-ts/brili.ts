@@ -16,11 +16,12 @@ const argCounts: {[key in bril.OpCode]: number | null} = {
   not: 1,
   and: 2,
   or: 2,
-  print: null,  // Any number of arguments.
   br: 3,
   jmp: 1,
   ret: 0,
   nop: 0,
+  print: null,
+  access: 2,
 };
 
 type Value = boolean | BigInt | Record;
@@ -42,6 +43,14 @@ function get(env: Env, ident: bril.Ident) {
   return val;
 }
 
+function getTypeEnv(typeEnv: TypeEnv, ident: bril.Ident) {
+  let val = typeEnv.get(ident);
+  if (typeof val === 'undefined') {
+    throw `undefined variable ${ident}`;
+  }
+  return val;
+}
+
 /**
  * Ensure that the instruction has exactly `count` arguments,
  * throwing an exception otherwise.
@@ -53,7 +62,7 @@ function checkArgs(instr: bril.Operation, count: number) {
 }
 
 function getInt(instr: bril.Operation, env: Env, index: number) {
-  let val = get(env, instr.args[index]);
+  let val = get(env, (instr as bril.ArgListOperation).args[index]);
   return getIntWithVal(val, env, index, instr.op)
 }
 
@@ -64,12 +73,12 @@ function getIntWithVal(val: Value, env: Env, index: number | string, op: string)
   return val;
 }
 
-function getBool(instr: bril.Operation, env: Env, index: number) {
-  let val = get(env, instr.args[index]);
+function getBool(instr: bril.Operation, env: Env, index: number) : boolean {
+  let val = get(env, (instr as bril.ArgListOperation).args[index]);
   return getBoolWithVal(val, env, index, instr.op)
 }
 
-function getBoolWithVal(val: Value, env: Env, index: number | string, op: string) {
+function getBoolWithVal(val: Value, env: Env, index: number | string, op: string) : boolean {
   if (typeof val !== 'boolean') {
     throw `${op} argument ${index} must be a boolean`;
   }
@@ -77,21 +86,22 @@ function getBoolWithVal(val: Value, env: Env, index: number | string, op: string
 }
 
 function getRecord(instr: bril.RecordValueOperation, env: Env, typeEnv: TypeEnv) : Record {
-  let record : bril.RecordType = get(typeEnv, instr.type);
+  let record : bril.RecordType = getTypeEnv(typeEnv, instr.type);
   let record_val : Record = {name: instr.type, bindings: {}};
   for (let field in instr.args) {
       // get declared type from typeEnv for each field
       let declared_type : bril.Type = record[field];
-      var val;
+      var val : Value;
       if (declared_type === "boolean") {
-        val = getBoolWithVal(instr.args[field], env, field, instr.op);
+        val = getBoolWithVal(get(env, instr.args[field]), env, field, instr.op);
       } else if (declared_type === "bigint") {
-        val = getIntWithVal(instr.args[field], env, field, instr.op);
+        val = getIntWithVal(get(env, instr.args[field]), env, field, instr.op);
       } else {
-        record = get(env, instr.args[field]);
+        val = get(env, instr.args[field]);
         if (record_val.name != declared_type){
           throw `${instr.op} argument ${field} must be a ${declared_type}`;
         } 
+  
       }
       record_val.bindings[field] = val;
     }
@@ -103,6 +113,7 @@ function getRecord(instr: bril.RecordValueOperation, env: Env, typeEnv: TypeEnv)
  * control to a label, go to the next instruction, or end thefunction.
  */
 type Action =
+
   {"label": bril.Ident} |
   {"next": true} |
   {"end": true};
@@ -117,7 +128,7 @@ let END: Action = {"end": true};
  */
 function evalInstr(instr: bril.Instruction, env: Env, typeEnv: TypeEnv): Action {
   // Check that we have the right number of arguments.
-  if (instr.op !== "const") {
+  if (!(instr.op === "const" || instr.op === "record" || instr.op === "type")) {
     let count = argCounts[instr.op];
     if (count === undefined) {
       throw "unknown opcode " + instr.op;
@@ -145,20 +156,20 @@ function evalInstr(instr: bril.Instruction, env: Env, typeEnv: TypeEnv): Action 
   }
 
   case "id": {
-    let val = get(env, instr.args[0]);
+    let val = get(env, (instr as bril.ArgListOperation).args[0]);
     env.set(instr.dest, val);
     return NEXT;
   }
 
   case "access": {
     let record = get(env, instr.args[0]);
-    let val = record.bindings[instr.args[1]];
+    let val = (record as Record).bindings[instr.args[1]];
     env.set(instr.dest, val);
     return NEXT;
   }
 
   case "type": {
-    typeEnv.set(instr.name, instr.fields);
+    typeEnv.set(instr.recordname, instr.fields);
     return NEXT;
   }
 
@@ -267,10 +278,11 @@ function evalInstr(instr: bril.Instruction, env: Env, typeEnv: TypeEnv): Action 
 
 function evalFunc(func: bril.Function) {
   let env: Env = new Map();
+  let typeEnv: TypeEnv = new Map();
   for (let i = 0; i < func.instrs.length; ++i) {
     let line = func.instrs[i];
     if ('op' in line) {
-      let action = evalInstr(line, env);
+      let action = evalInstr(line, env, typeEnv);
 
       if ('label' in action) {
         // Search for the label and transfer control.

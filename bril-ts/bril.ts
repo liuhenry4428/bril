@@ -65,7 +65,7 @@ export interface RecordType {
 
 export interface RecordDef {
   op: "type";
-  name: Ident;
+  recordname: Ident;
   fields: RecordType;
 }
 
@@ -73,7 +73,7 @@ export interface RecordDef {
  * Operations take arguments, which come from previously-assigned identifiers.
  */
 export type Operation = EffectOperation | ValueOperation | RecordValueOperation;
-
+export type ArgListOperation = EffectOperation | ValueOperation
 /**
  * Instructions can be operations (which have arguments) or constants (which
  * don't). Both produce a value in a destination variable.
