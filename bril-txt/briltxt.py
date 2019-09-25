@@ -21,8 +21,9 @@ start: func*
 
 func: CNAME "{" instr* "}"
 
-?instr: const | vop | eop | label | record | recordinst | access
+?instr: const | vop | eop | label | record | recordinst | access | recordwith
 
+recordwith.7: IDENT ":" IDENT "=" IDENT "with" "{" [recordfield (";" recordfield)*] "}" ";"
 record.6: "type" IDENT "=" "{" [recordfield (";" recordfield)*] "}" ";"
 const.5: IDENT ":" type "=" "const" lit ";"
 access.5: IDENT ":" type "=" "id" IDENT "." IDENT ";"
@@ -74,6 +75,17 @@ class JSONTransformer(lark.Transformer):
         return {
             'recordname':recordName, 
             'op': 'recorddef',
+            'fields': {k: v for i in items for k, v in i.items()}}
+
+    def recordwith(self, items):
+        newRecord = items.pop(0)
+        recordType = items.pop(0)
+        oldRecord = items.pop(0)
+        return {
+            'src': oldRecord, 
+            'dest': newRecord,
+            'type': recordType,
+            'op': 'recordwith',
             'fields': {k: v for i in items for k, v in i.items()}}
 
     def recordfield(self, items):

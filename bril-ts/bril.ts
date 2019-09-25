@@ -76,16 +76,34 @@ export interface RecordDef {
 }
 
 /**
+ * An operation that produces a record value from an existing record and
+ * places its result in the destination variable.
+ */
+export interface RecordWith {
+  op: "recordwith";
+  src: Ident;
+  fields: {[index: string]: Ident};
+  dest: Ident;
+  type: Type;
+}
+
+/**
  * Operations take arguments, which come from previously-assigned identifiers.
  */
 export type Operation = EffectOperation | ValueOperation;
+
+/**
+ * RecordOperations take arguments, which come from previously-assigned
+ * identifiers, and initializes a record with them.
+ */
+export type RecordOperation = RecordValue | RecordWith;
 
 /**
  * Instructions can be operations, record values (which have arguments), or
  * constants, record definitions (which don't).
  * Both produce a value in a destination variable.
  */
-export type Instruction = Operation | Constant | RecordDef | RecordValue;
+export type Instruction = Operation | Constant | RecordDef | RecordOperation;
 
 /**
  * Both constants and value operations produce results.

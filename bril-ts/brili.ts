@@ -20,8 +20,8 @@ const argCounts: {[key in bril.OpCode]: number | null} = {
   jmp: 1,
   ret: 0,
   nop: 0,
-  print: null,
   access: 2,
+  print: null,
 };
 
 type Value = boolean | BigInt | Record;
@@ -76,27 +76,55 @@ function checkIntVal(val: Value, env: Env, index: number | string, op: string) {
   return val;
 }
 
-function getRecord(instr: bril.RecordValue, env: Env, typeEnv: TypeEnv) : Record {
-  let record = get(typeEnv, instr.type);
-  let record_val : Record = {name: instr.type, bindings: {}};
-
-  for (let field in record) {
-      let declared_type : bril.Type = record[field];
-      var val : Value = get(env, instr.fields[field]);
-
-      if (declared_type === "boolean") {
-        val = checkBoolVal(val , env, field, instr.op);
-      } else if (declared_type === "int") {
-        val = checkIntVal(val, env, field, instr.op);
+/**
+ * Creates a new record given record bindings and a name;
+ * @param o RecordBindings to copy
+ * @param name Name of new record
+ */
+function copy(o: RecordBindings, name: string) {
+  var output : Record, v, key;
+  output = {name: name, bindings: {}};
+  for (key in o) {
+      v = o[key];
+      if (typeof v === "boolean" || typeof v === 'bigint') {
+        output.bindings[key] = v;
       } else {
-        if ((val as Record).name != declared_type){
-          throw `${instr.op} argument ${field} must be a ${declared_type}`;
-        } 
+        output.bindings[key] = copy((v as Record).bindings, (v as Record).name)
       }
-      record_val.bindings[field] = val;
-    }
-    return record_val;
   }
+  return output;
+}
+
+/**
+ * Creates a record given. Used for opcodes 'recordinst' and 'with'
+ * @param init Optional field initialization for new record.
+ *             Used for 'with' syntax.
+ */
+function createRecord(instr: bril.RecordOperation, env: Env, typeEnv: TypeEnv, init?: Record) : Record {
+  let record = get(typeEnv, instr.type);
+  let fieldList = instr.fields;
+  let rec : Record = {name: instr.type, bindings: {}};
+  if (!init) { 
+    fieldList = record;
+  } else {
+    rec = copy(init.bindings, instr.type);
+  }
+  for (let field in fieldList) {
+    let declared_type : bril.Type = record[field];
+    var val : Value = get(env, instr.fields[field]);
+    if (declared_type === "boolean") {
+      val = checkBoolVal(val , env, field, instr.op);
+    } else if (declared_type === "int") {
+      val = checkIntVal(val, env, field, instr.op);
+    } else {
+      if ((val as Record).name != declared_type) {
+        throw `${instr.op} argument ${field} must be a ${declared_type}`;
+      } 
+    }
+    rec.bindings[field] = val;
+  }
+  return rec;
+}
 
 /**
  * The thing to do after interpreting an instruction: either transfer
@@ -117,7 +145,8 @@ let END: Action = {"end": true};
  */
 function evalInstr(instr: bril.Instruction, env: Env, typeEnv: TypeEnv): Action {
   // Check that we have the right number of arguments.
-  if (!(instr.op === "const" || instr.op === "recordinst" || instr.op === "recorddef")) {
+  if (!(instr.op === "const" || instr.op === "recordinst" ||
+    instr.op === "recorddef" || instr.op === "recordwith")) {
     let count = argCounts[instr.op];
     if (count === undefined) {
       throw "unknown opcode " + instr.op;
@@ -145,7 +174,14 @@ function evalInstr(instr: bril.Instruction, env: Env, typeEnv: TypeEnv): Action 
   }
 
   case "recordinst": {
-    let val = getRecord(instr, env, typeEnv);
+    let val = createRecord(instr, env, typeEnv);
+    env.set(instr.dest, val);
+    return NEXT;
+  }
+
+  case "recordwith": {
+    let src_record = get(env, instr.src) as Record; 
+    let val = createRecord(instr, env, typeEnv, src_record);
     env.set(instr.dest, val);
     return NEXT;
   }
